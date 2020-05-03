@@ -6,15 +6,14 @@ import android.util.AttributeSet
 import android.view.ViewGroup
 
 
-class ViewPort : ViewGroup {
-    constructor(context: Context?) : super(context) {}
-    constructor(context: Context?, attrs: AttributeSet?) : this(context, attrs, 0) {}
+class CustomCanvas : ViewGroup {
+    constructor(context: Context?) : super(context)
+    constructor(context: Context?, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context?, attrs: AttributeSet?, defStyle: Int) : super(
         context,
         attrs,
         defStyle
-    ) {
-    }
+    )
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(widthMeasureSpec, heightMeasureSpec)
@@ -41,12 +40,12 @@ class ViewPort : ViewGroup {
         eraser.isAntiAlias = true
         eraser.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         val width = width.toFloat() - viewportMargin
-        val height = width * 0.7.toFloat()
+        val height = width * 1.toFloat()
         val rect =
-            RectF(viewportMargin.toFloat(), viewportMargin.toFloat(), width, height)
+            RectF(viewportMargin.toFloat(), 300.toFloat(), width, height)
         val frame = RectF(
             viewportMargin.toFloat() - 2,
-            viewportMargin.toFloat() - 2,
+            300.toFloat() - 2,
             width + 4,
             height + 4
         )
