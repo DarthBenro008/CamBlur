@@ -2,100 +2,66 @@ package com.benrostudios.camblur
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Matrix
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Size
-import android.view.Surface
-import android.view.TextureView
-import android.view.ViewGroup
 import android.widget.Toast
-import androidx.camera.core.CameraX
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
-import androidx.camera.core.PreviewConfig
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import java.util.concurrent.Executors
+import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.android.synthetic.main.activity_main.*
 
 private const val REQUEST_CODE_PERMISSIONS = 10
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-class MainActivity : AppCompatActivity() ,LifecycleOwner{
+class MainActivity : AppCompatActivity() {
 
-
+    private lateinit var cameraProviderFuture : ListenableFuture<ProcessCameraProvider>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        viewFinder = findViewById(R.id.view_finder)
+        cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener(Runnable {
+            val cameraProvider = cameraProviderFuture.get()
+            bindPreview(cameraProvider)
+        }, ContextCompat.getMainExecutor(this))
+
 
         // Request camera permissions
         if (allPermissionsGranted()) {
-            viewFinder.post { startCamera() }
+            //viewFinder.post { startCamera() }
         } else {
             ActivityCompat.requestPermissions(
                     this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
 
-        // Every time the provided texture view changes, recompute layout
-        viewFinder.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateTransform()
-        }
-    }
-    private val executor = Executors.newSingleThreadExecutor()
-    private lateinit var viewFinder: TextureView
-
-    private fun startCamera() {
-        val previewConfig = PreviewConfig.Builder().apply {
-            setTargetResolution(Size(1920, 1080))
-        }.build()
-
-
-        // Build the viewfinder use case
-        val preview = Preview(previewConfig)
-
-        // Every time the viewfinder is updated, recompute layout
-        preview.setOnPreviewOutputUpdateListener {
-
-            // To update the SurfaceTexture, we have to remove it and re-add it
-            val parent = viewFinder.parent as ViewGroup
-            parent.removeView(viewFinder)
-            parent.addView(viewFinder, 0)
-            viewFinder.surfaceTexture = it.surfaceTexture
-
-            updateTransform()
-        }
-
-        CameraX.bindToLifecycle(this, preview)
 
     }
 
-    private fun updateTransform() {
-        val matrix = Matrix()
+    fun bindPreview(cameraProvider : ProcessCameraProvider) {
+        var preview: Preview = Preview.Builder()
+            .build()
 
-        // Compute the center of the view finder
-        val centerX = viewFinder.width / 2f
-        val centerY = viewFinder.height / 2f
+        var cameraSelector: CameraSelector = CameraSelector.Builder()
+            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+            .build()
 
-        // Correct preview output to account for display rotation
-        val rotationDegrees = when(viewFinder.display.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> return
-        }
-        matrix.postRotate(-rotationDegrees.toFloat(), centerX, centerY)
+        var camera = cameraProvider.bindToLifecycle(this as LifecycleOwner, cameraSelector, preview)
 
-        // Finally, apply transformations to our TextureView
-        viewFinder.setTransform(matrix)
+        preview.setSurfaceProvider(preview_view.createSurfaceProvider(camera.cameraInfo))
     }
+
+
+
 
     override fun onRequestPermissionsResult(
             requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                viewFinder.post { startCamera() }
+                //viewFinder.post { startCamera() }
             } else {
                 Toast.makeText(this,
                         "Permissions not granted by the user.",
